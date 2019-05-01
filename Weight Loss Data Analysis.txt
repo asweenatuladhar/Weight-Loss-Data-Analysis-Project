@@ -1,0 +1,181 @@
+> data = read.table("weight_loss.txt",header=T)
+> data
+     group wl1 wl2 wl3
+1  Control   4   3   3
+2  Control   4   4   3
+3  Control   4   3   1
+4  Control   3   2   1
+5  Control   5   3   2
+6  Control   6   5   4
+7  Control   6   5   4
+8  Control   5   4   1
+9  Control   5   4   1
+10 Control   3   3   2
+11 Control   4   2   2
+12 Control   5   2   1
+13    Diet   6   3   2
+14    Diet   5   4   1
+15    Diet   7   6   3
+16    Diet   6   4   2
+17    Diet   3   2   1
+18    Diet   5   5   4
+19    Diet   4   3   1
+20    Diet   4   2   1
+21    Diet   6   5   3
+22    Diet   7   6   4
+23    Diet   4   3   2
+24    Diet   7   4   3
+> datacontrol= data[data$group=="Control",2:4]
+> datacontrol
+   wl1 wl2 wl3
+1    4   3   3
+2    4   4   3
+3    4   3   1
+4    3   2   1
+5    5   3   2
+6    6   5   4
+7    6   5   4
+8    5   4   1
+9    5   4   1
+10   3   3   2
+11   4   2   2
+12   5   2   1
+> datadiet= data[data$group=="Diet",2:4]
+> datadiet
+   wl1 wl2 wl3
+13   6   3   2
+14   5   4   1
+15   7   6   3
+16   6   4   2
+17   3   2   1
+18   5   5   4
+19   4   3   1
+20   4   2   1
+21   6   5   3
+22   7   6   4
+23   4   3   2
+24   7   4   3
+> mean1 = sapply(datacontrol,mean)
+> mean2 = sapply(datadiet,mean)
+> mean1
+     wl1      wl2      wl3 
+4.500000 3.333333 2.083333 
+> mean2
+     wl1      wl2      wl3 
+5.333333 3.916667 2.250000 
+> group=data$group
+> data.m=data.matrix(data[2:4])
+
+> mnv=manova(data.m~group)
+> summary.manova(mnv,test="W")
+          Df   Wilks approx F num Df den Df Pr(>F)
+group      1 0.86026   1.0829      3     20  0.379
+Residuals 22                                      
+> pf(1.86026,3,20,lower.tail=F)
+[1] 0.1688759
+> ## since p-value is more than alpha,we do not reject the null hypothesis, thus not rejecting the equlity of means
+> covmat = data.matrix(cov(data[,2:4]))
+> covmat
+          wl1      wl2       wl3
+wl1 1.5579710 1.184783 0.7971014
+wl2 1.1847826 1.548913 1.0217391
+wl3 0.7971014 1.021739 1.2753623
+> D = diag(c(sqrt(1.5579710),sqrt(1.548913),sqrt(1.2753623)))
+> rho = solve(D)%*%covmat%*%solve(D)
+> rho
+          [,1]      [,2]      [,3]
+[1,] 1.0000000 0.7626855 0.5654798
+[2,] 0.7626855 1.0000000 0.7269587
+[3,] 0.5654798 0.7269587 1.0000000
+> x=eigen(rho)
+> x
+eigen() decomposition
+$values
+[1] 2.3734863 0.4360455 0.1904683
+
+$vectors
+          [,1]        [,2]       [,3]
+[1,] 0.5666388  0.66502746  0.4864761
+[2,] 0.6086248  0.06017259 -0.7911733
+[3,] 0.5554245 -0.74439085  0.3706561
+> Totalvar = (2.3734863+0.4360455+0.1904683)
+> Totalvar
+[1] 3
+> for(i in 1:3){
++ ppcvar[i]=(x$values[i])/Totalvar
++ }
+> ppcvar
+[1] 0.79116208 0.14534848 0.06348942
+> Total=rep(NA,3)
+> for(i in 1:3){
++ Total[i]=sum(ppcvar[1:i])
++ }
+> Total
+[1] 0.7911621 0.9365106 1.0000000
+> ##we can reduce the dimension by 1
+
+> runif(1,1,10)
+[1] 3.113674
+> runif(1,1,8)
+[1] 6.298227
+> runif(1,1,6)
+[1] 3.011828
+> X=c(3,6,3)
+> n1=length(datacontrol[,1])
+> n2=length(datadiet[,1])
+> p=length(datadiet[1,])
+> S1=cov(datacontrol)
+> S2=cov(datadiet)
+> Sp=((((n1-1)*S1)+((n2-1)*S2))/(n1+n2-2))
+> Sp
+          wl1      wl2       wl3
+wl1 1.4393939 1.106061 0.7954545
+wl2 1.1060606 1.526515 1.0416667
+wl3 0.7954545 1.041667 1.3257576
+> L=(t(mean1-mean2)%*%solve(Sp)%*%(X))-(0.5*t(mean1-mean2)%*%solve(Sp)%*%(mean1+mean2))
+> L
+         [,1]
+[1,] 1.200328
+> L>0
+     [,1]
+[1,] TRUE
+> ##Since the expression L>0, we classify the given observation as datacontrol
+> dataconrol=data.matrix(datacontrol)
+> datadiet=data.matrix(datadiet)
+> n1M=0
+> classify=function(x){
++ L=(t(mean1-mean2)%*%solve(Sp)%*%(x))-(0.5*t(mean1-mean2)%*%solve(Sp)%*%(mean1+mean2))
++ return(L)}
+> for(i in 1:n1){
++ if(classify(data1[i,])<0)
++ n1M=n1M+1
++ }
+> n1M
+[1] 6
+> for(i in 1:n2){
++ if(classify(data2[i,])>=0)
++ n2M=n2M+1
++ }
+> n2M
+[1] 5
+> n1C=n1-n1M
+> n2C=n1-n2M
+> n1C
+[1] 6
+> n2C
+[1] 7
+> APER = (n1M+n2M)/(n1+n2)
+> APER
+[1] 0.4583333
+> library(caret)
+> levels=c("Control","Diet")
+> actual= factor(rep(levels,times=c(n1,n2)))
+> predicted= factor(c(rep(levels,times=c(n1C,n1M)),rep(levels,times=c(n2M,n2C))))
+> confusion.matrix=table(actual,predicted)
+> confusion.matrix
+         predicted
+actual    Control Diet
+  Control       6    6
+  Diet          5    7
+
+
